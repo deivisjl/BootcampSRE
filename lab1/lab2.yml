@@ -1,0 +1,36 @@
+## Deivis Lopez - Template Bucket-S3
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cloud formation for bucket S3 SRE
+
+Parameters:
+  BucketName: { Type: String, Default: "S3-BOOTCAMP-SRE" }
+
+Resources:  
+  MainBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref BucketName
+  BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      PolicyDocument:
+        Id: SRE-Policy
+        Version: 2012-10-17
+        Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Join 
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref MainBucket
+                - /*
+      Bucket: !Ref MainBucket
+Outputs:
+  MainBucketName:
+    Description: Nombre del bucket s3
+    Value: !Ref MainBucket
+
+## https://www.varonis.com/blog/create-s3-bucket
+## https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/quickref-s3.html#scenario-s3-bucket
