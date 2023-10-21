@@ -1,0 +1,29 @@
+## Deivis Lopez - Template Bucket-S3
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cloud formation for bucket S3 SRE
+
+Parameters:
+  BucketName:
+    Type: AWS::SSM::Parameter::Value<String> 
+    Default: "/fintech2/confidencial/bucketcards"
+  BucketNameProd:
+    Type: AWS::SSM::Parameter::Value<String> 
+    Default: "/fintech2/confidencial/bucketcards/prod"
+  Environment:
+    Type: String
+    Default: 'prod'
+    AllowedValues: ['test','prod']
+Conditions:
+  IsProd: !Equals [!Ref Environment, 'prod']
+Resources:  
+  MainBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !If [IsProd, !Ref BucketNameProd, !Ref BucketName]
+Outputs:
+  MainBucketName:
+    Description: Nombre del bucket s3
+    Value: !Ref MainBucket
+
+## https://www.varonis.com/blog/create-s3-bucket
+## https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/quickref-s3.html#scenario-s3-bucket

@@ -1,0 +1,36 @@
+Resources:
+  Bob:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: Bob
+  BobApiKey:
+    Type: AWS::IAM:AccessKey
+    Properties:
+      UserName: !Ref Bob
+Outputs:
+  BobKey:
+    Value: !Ref BobApiKey
+  BobSecret:
+    Value: !GetAttBobApiKey.SecretAccessKey
+  
+## funcion intrinseca 
+
+Parameters:
+  Env:
+    Type: String
+    Default: test
+    AllowedValues: ['test', 'prod']
+      ImageId: 
+        Type: AWS::SSM::Parameter::Value<AWS::EC2::Image:Id>
+        Default: '/aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-gp2'
+Conditions:
+  IsProd: !Equals [ !Ref Env, 'prod']
+Resources:
+  WebLt:
+    Type: AWS::EC2_LaunchTemplate
+    Properties:
+      LaunchTemplateName: web
+      LaunchTemplateData:
+      ImageId: !Ref ImageId
+      InstanceType: !If [ IsProd, m5.large, t3.micro]
+      
