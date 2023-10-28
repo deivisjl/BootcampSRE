@@ -31,11 +31,8 @@ Resources:
             Effect: Allow
             Principal: '*'
             Action: 's3:PutObject'
-            Resource: !Join 
-              - ''
-              - - 'arn:aws:s3:::'
-                - !Ref MainBucket
-                - /*
+            Resource: 
+              - !Sub arn:aws:s3:::${MainBucket}/*
             Condition:
               StringEquals:
                 "s3:x-amz-acl": "bucket-owner-full-control"
