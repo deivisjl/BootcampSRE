@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Sample SAM Template for hello world
+
+Resources:
+  HttpApiGatewayApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Auth:
+        Authorizers:
+          MyLambdaAuthorizer: 
+            AuthorizerPayloadFormatVersion: 2.0
+            FunctionArn:
+              Fn::GetAtt:
+                - AuthFunction
+                - Arn
+            EnableFunctionDefaultPermissions: True
+            EnableSimpleResponses: True
+        DefaultAuthorizer: MyLambdaAuthorizer
+      StageName: Prod
+      Name: http-api-hello
+
+  AuthFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: functions/autorizacion/
+      Handler: main.lambda_handler
+      Runtime: python3.8
+      Architectures:
+        - x86_64
+      Policies:
+        - Statement: # Inline policy
+            - Sid: SecretsManager
+              Effect: Allow
+              Action:
+                - 'secretsmanager:GetSecretValue'
+                - 'secretsmanager:DescribeSecret'
+              Resource: '*'
+
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: functions/hello/
+      Handler: main.lambda_handler
+      Runtime: python3.8
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: HttpApi # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            ApiId: !Ref HttpApiGatewayApi
+            Path: /hello
+            Method: get    
+      Policies:
+        - CloudWatchPutMetricPolicy: {}
+        - Statement: #Inline Policy
+            - Sid: DynamoDB
+              Effect: Allow
+              Action:
+                - 'dynamodb:Scan'
+                - 'dynamodb:DescribeTable'
+                - 'dynamodb:GetItem'
+              Resource: '*'
+        
+  NombresTabla:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: 'TablaDemo'
+      AttributeDefinitions:
+        - AttributeName: 'Nombre'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'Nombre'
+          KeyType: 'HASH'
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
