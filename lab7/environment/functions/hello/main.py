@@ -7,12 +7,10 @@ def lambda_handler(event, context):
     table = dynamodb.Table('TablaDemo')  # Reemplaza con el nombre de tu tabla DynamoDB
 
     response = table.scan()
+    lista = []
     items = response['Items']
 
     for item in items:
-        nombre = item['Nombre']
+        lista.append({"Nombre":item['Nombre']})
 
-    return {
-        'statusCode': 200,
-        'body': f"Hello, {nombre}!"
-    }
+    return json.dumps(lista)

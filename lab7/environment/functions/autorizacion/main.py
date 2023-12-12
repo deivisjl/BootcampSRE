@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError
 #import base64
 
 def get_secret():
-    secret_name = "SecretHeaderApi"
+    secret_name = "SecretApi"
     region_name = "us-east-2"
     
     session = boto3.session.Session()
