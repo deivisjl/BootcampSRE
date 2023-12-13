@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Sample SAM Template for SRE BOOTCAMP
+
+Resources:
+  HttpApiGatewayApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Auth:
+        Authorizers:
+          MyLambdaAuthorizer: 
+            AuthorizerPayloadFormatVersion: 2.0
+            FunctionArn:
+              Fn::GetAtt:
+                - AuthFunction
+                - Arn
+            EnableFunctionDefaultPermissions: True
+            EnableSimpleResponses: True
+        DefaultAuthorizer: MyLambdaAuthorizer
+      StageName: Prod
+      Name: http-api-hello
+
+  AuthFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: functions/autorizacion/
+      Handler: main.lambda_handler
+      Runtime: python3.8
+      Architectures:
+        - x86_64
+      Policies:
+        - Statement: # Inline policy
+            - Sid: SecretsManager
+              Effect: Allow
+              Action:
+                - 'secretsmanager:GetSecretValue'
+                - 'secretsmanager:DescribeSecret'
+                - 'secretsmanager:PutSecretValue'
+                - 'secretsmanager:UpdateSecretVersionStage'
+              Resource: !Ref SecretApi
+#              Resource: '*'
+
+  UsersFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: functions/users/
+      Handler: main.lambda_handler
+      Runtime: python3.8
+      Architectures:
+        - x86_64
+      Events:
+        Users:
+          Type: HttpApi # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            ApiId: !Ref HttpApiGatewayApi
+            Path: /users
+            Method: get    
+      Policies:
+        - CloudWatchPutMetricPolicy: {}
+        - Statement: #Inline Policy
+            - Sid: DynamoDB
+              Effect: Allow
+              Action:
+                - 'dynamodb:Scan'
+                - 'dynamodb:DescribeTable'
+                - 'dynamodb:GetItem'
+              Resource: '*'
+  
+  InsertFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: functions/insert/
+      Handler: main.lambda_handler
+      Runtime: python3.8
+      Architectures:
+        - x86_64
+      Events:
+        Insert:
+          Type: HttpApi # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            ApiId: !Ref HttpApiGatewayApi
+            Path: /insert
+            Method: get    
+      Policies:
+        - CloudWatchPutMetricPolicy: {}
+        - Statement: #Inline Policy
+            - Sid: DynamoDB
+              Effect: Allow
+              Action:
+                - 'dynamodb:Scan'
+                - 'dynamodb:DescribeTable'
+                - 'dynamodb:Query'
+                - 'dynamodb:GetItem'
+                - 'dynamodb:PutItem'
+              Resource: '*'
+
+  SecretApi:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: SecretApi
+      Description: "Secret header api authorization"  
+      SecretString: '{"secret_header":"my-secret-header"}'
+
+  SecretRotationScheduler:
+    Type: AWS::SecretsManager::RotationSchedule
+    Properties:
+      SecretId: !Ref SecretApi
+      RotationLambdaARN: !GetAtt AuthFunction.Arn
+      RotationRules:
+        Duration: 2h
+        ScheduleExpression: 'cron(0 1 * * ? *)'
+  
+  SigningKeyRotationLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AuthFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: secretsmanager.amazonaws.com
+
+  NombresTabla:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: 'TablaDemo'
+      AttributeDefinitions:
+        - AttributeName: 'Nombre'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'Nombre'
+          KeyType: 'HASH'
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+
+Outputs:
+  InsertEndpointApi:
+    Description: "API Gateway endpoint URL GET for Prod stage for InsertUsers function"
+    Value: !Sub "https://${HttpApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/insert"
+  UsersEndpointdApi:
+    Description: "API Gateway endpoint URL GET for Prod stage for UsersList function"
+    Value: !Sub "https://${HttpApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/users"
